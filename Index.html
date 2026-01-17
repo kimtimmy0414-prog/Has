@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>방문자 로거 (Discord + Email)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 60px 20px;
+      background: #f0f2f5;
+      color: #333;
+    }
+    h1 { color: #5865F2; }
+    #status {
+      margin-top: 30px;
+      padding: 15px;
+      border-radius: 8px;
+      background: #e3f2fd;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>어서오세요!</h1>
+  <p>페이지 로딩 중... 잠시만 기다려주세요.</p>
+
+  <div id="status">정보를 기록하고 있습니다...</div>
+
+  <!-- EmailJS SDK 로드 (꼭 넣어주세요) -->
+  <script type="text/javascript"
+    src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+  </script>
+
+  <script>
+    // 페이지 로드 후 바로 실행
+    window.addEventListener('load', async () => {
+      const status = document.getElementById('status');
+
+      try {
+        // 1. IP 가져오기
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipRes.json();
+        const ip = ipData.ip;
+
+        // 2. 정보 수집
+        const now = new Date().toISOString();
+        const ua = navigator.userAgent || 'unknown';
+        const lang = navigator.language || 'unknown';
+        const screen = `${window.screen.width} × ${window.screen.height}`;
+        const referrer = document.referrer || '직접 접속';
+
+        // ──────────────────────────────
+        // EmailJS 설정 부분 (여기 수정!)
+        // ──────────────────────────────
+        emailjs.init("RJX0gu84p4jOC73_8");  // ← EmailJS 대시보드에서 Public Key 복사
+
+        const emailParams = {
+          ip: ip,
+          time: now,
+          ua: ua.substring(0, 150) + (ua.length > 150 ? '...' : ''),
+          lang: lang,
+          screen: screen,
+          referrer: referrer,
+          to_email: "your-receive-email@gmail.com"   // ← 받을 이메일 주소
+        };
+
+        await emailjs.send(
+          "service_taqxv9h",      // ← Email Services에서 나온 ID
+          "template_7dmu3fj",     // ← visitor_notification 템플릿 ID
+          emailParams
+        );
+
+        // ──────────────────────────────
+        // Discord 웹훅 (기존 그대로)
+        // ──────────────────────────────
+        const discordPayload = {
+          username: "Visitor Logger",
+          embeds: [{
+            title: "새로운 방문자 (Email도 발송됨)",
+            color: 0x5865F2,
+            fields: [
+              { name: "IP 주소", value: `\`${ip}\``, inline: true },
+              { name: "접속 시간", value: now, inline: true },
+              { name: "브라우저", value: ua.substring(0, 100) + '...', inline: false }
+            ],
+            timestamp: now
+          }]
+        };
+
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1462053319210962987/VOE18dHzyIoAxmSTrain4osfkzCdLzueHy2XCc0AUkopriwg3f7eVDTnc60dgX72oQrM";
+        await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(discordPayload)
+        });
+
+        // 성공 메시지
+        status.innerHTML = "방문 기록 완료 ✓<br>Discord + 이메일로 알림 전송됨!";
+        status.style.background = '#d4edda';
+        status.style.color = '#155724';
+
+      } catch (err) {
+        console.error('오류:', err);
+        status.innerHTML = "문제가 발생했습니다 ㅠㅠ<br>콘솔 확인 부탁드려요";
+        status.style.background = '#f8d7da';
+        status.style.color = '#721c24';
+      }
+    });
+  </script>
+
+</body>
+</html>
